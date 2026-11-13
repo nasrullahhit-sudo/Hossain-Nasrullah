@@ -1,0 +1,6 @@
+{
+  "name": "Nasrullah's 30-Day Challenge",
+  "description": "Personal 30-day productivity, prayer, study, fitness, and outreach habit tracker for Nasrullah (17 Nov – 16 Dec 2026).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

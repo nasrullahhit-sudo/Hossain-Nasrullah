@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User challenge profile and settings for Nasrullah's 30-Day Challenge (Nov 17 - Dec 16, 2026).",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the owner." },
+        "displayName": { "type": "string", "description": "Display name shown in dashboard greeting." },
+        "themeMode": { "type": "string", "enum": ["system", "light", "dark"], "description": "Preferred UI theme mode." },
+        "challengeStartDate": { "type": "string", "description": "ISO-8601 challenge start date (2026-11-17)." },
+        "challengeEndDate": { "type": "string", "description": "ISO-8601 challenge end date (2026-12-16)." },
+        "seededDefaults": { "type": "boolean", "description": "Whether the 21 default habits and reminders have been seeded." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["userId", "displayName", "themeMode", "challengeStartDate", "challengeEndDate", "seededDefaults", "createdAt", "updatedAt"]
+    },
+    "Habit": {
+      "title": "Habit",
+      "description": "A daily habit item in the user's 30-day challenge checklist.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID." },
+        "title": { "type": "string", "description": "Habit title." },
+        "category": { "type": "string", "enum": ["Spiritual", "Study & Skill", "Health", "Outreach & Work", "Content & Personal"], "description": "Habit category." },
+        "targetDetail": { "type": "string", "description": "Optional target or reminder detail." },
+        "sortOrder": { "type": "integer", "description": "Zero-based display order index." },
+        "isActive": { "type": "boolean", "description": "Whether habit is active in daily checklist." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["userId", "title", "category", "targetDetail", "sortOrder", "isActive", "createdAt", "updatedAt"]
+    },
+    "DailyLog": {
+      "title": "DailyLog",
+      "description": "Daily completion state, metrics, and journal reflection for a single challenge day (Day 1 to Day 30).",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID." },
+        "dayNumber": { "type": "integer", "description": "Challenge day number from 1 to 30." },
+        "dateIso": { "type": "string", "description": "ISO date string for the day (2026-11-17 to 2026-12-16)." },
+        "completedHabitIds": { "type": "array", "description": "List of completed habit document IDs." },
+        "totalHabitsSnapshot": { "type": "integer", "description": "Count of active habits when recorded." },
+        "notes": { "type": "string", "description": "Daily journal reflection and notes." },
+        "studyHours": { "type": "number", "description": "CST & English study hours logged." },
+        "fiverrHours": { "type": "number", "description": "Fiverr online availability hours logged." },
+        "waterGlasses": { "type": "integer", "description": "Glasses of water consumed." },
+        "sleepHours": { "type": "number", "description": "Hours slept." },
+        "linkedinConnections": { "type": "integer", "description": "New LinkedIn connections made." },
+        "instagramDms": { "type": "integer", "description": "Personalized Instagram outreach DMs sent." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["userId", "dayNumber", "dateIso", "completedHabitIds", "totalHabitsSnapshot", "notes", "studyHours", "fiverrHours", "waterGlasses", "sleepHours", "linkedinConnections", "instagramDms", "createdAt", "updatedAt"]
+    },
+    "ChallengeReminder": {
+      "title": "ChallengeReminder",
+      "description": "A daily target reminder schedule item.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID." },
+        "title": { "type": "string", "description": "Reminder title." },
+        "targetText": { "type": "string", "description": "Target metric or time description." },
+        "timeLabel": { "type": "string", "description": "Formatted reminder time label." },
+        "hour": { "type": "integer", "description": "Hour of day (0-23)." },
+        "minute": { "type": "integer", "description": "Minute of hour (0-59)." },
+        "enabled": { "type": "boolean", "description": "Whether daily notification reminder is enabled." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["userId", "title", "targetText", "timeLabel", "hour", "minute", "enabled", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile and challenge configuration scoped to authenticated user."
+    },
+    "/users/{userId}/habits/{habitId}": {
+      "schema": { "$ref": "#/entities/Habit" },
+      "description": "User's ordered checklist of daily habits."
+    },
+    "/users/{userId}/dailyLogs/{dayKey}": {
+      "schema": { "$ref": "#/entities/DailyLog" },
+      "description": "Daily habit completion records, metrics, and notes keyed by day_01..day_30."
+    },
+    "/users/{userId}/reminders/{reminderId}": {
+      "schema": { "$ref": "#/entities/ChallengeReminder" },
+      "description": "Daily targets and reminder schedules."
+    }
+  }
+}

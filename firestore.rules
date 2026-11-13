@@ -1,0 +1,171 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             data.themeMode in ['system', 'light', 'dark'] &&
+             data.challengeStartDate is string && data.challengeStartDate.size() == 10 &&
+             data.challengeEndDate is string && data.challengeEndDate.size() == 10 &&
+             data.seededDefaults is bool;
+    }
+
+    function isValidHabit(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.category in ['Spiritual', 'Study & Skill', 'Health', 'Outreach & Work', 'Content & Personal'] &&
+             data.targetDetail is string && data.targetDetail.size() <= 160 &&
+             data.sortOrder is int && data.sortOrder >= 0 && data.sortOrder <= 1000 &&
+             data.isActive is bool;
+    }
+
+    function isValidDailyLog(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.dayNumber is int && data.dayNumber >= 1 && data.dayNumber <= 30 &&
+             data.dateIso is string && data.dateIso.size() == 10 &&
+             data.completedHabitIds is list && data.completedHabitIds.size() <= 100 &&
+             (data.completedHabitIds.size() == 0 || data.completedHabitIds[0] is string) &&
+             data.totalHabitsSnapshot is int && data.totalHabitsSnapshot >= 0 && data.totalHabitsSnapshot <= 100 &&
+             data.notes is string && data.notes.size() <= 4000 &&
+             data.studyHours is number && data.studyHours >= 0 && data.studyHours <= 24 &&
+             data.fiverrHours is number && data.fiverrHours >= 0 && data.fiverrHours <= 24 &&
+             data.waterGlasses is int && data.waterGlasses >= 0 && data.waterGlasses <= 50 &&
+             data.sleepHours is number && data.sleepHours >= 0 && data.sleepHours <= 24 &&
+             data.linkedinConnections is int && data.linkedinConnections >= 0 && data.linkedinConnections <= 500 &&
+             data.instagramDms is int && data.instagramDms >= 0 && data.instagramDms <= 500;
+    }
+
+    function isValidReminder(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.targetText is string && data.targetText.size() <= 120 &&
+             data.timeLabel is string && data.timeLabel.size() >= 1 && data.timeLabel.size() <= 40 &&
+             data.hour is int && data.hour >= 0 && data.hour <= 23 &&
+             data.minute is int && data.minute >= 0 && data.minute <= 59 &&
+             data.enabled is bool;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'themeMode', 'challengeStartDate', 'challengeEndDate', 'seededDefaults', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'themeMode', 'challengeStartDate', 'challengeEndDate', 'seededDefaults', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'themeMode', 'seededDefaults', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /habits/{habitId} {
+        allow get: if isOwner(userId) && isValidId(habitId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(habitId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'title', 'category', 'targetDetail', 'sortOrder', 'isActive', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'category', 'targetDetail', 'sortOrder', 'isActive', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidHabit(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(habitId) &&
+                         isValidHabit(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'category', 'targetDetail', 'sortOrder', 'isActive', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(habitId);
+      }
+
+      match /dailyLogs/{dayKey} {
+        allow get: if isOwner(userId) && isValidId(dayKey);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(dayKey) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'dayNumber', 'dateIso', 'completedHabitIds', 'totalHabitsSnapshot', 'notes', 'studyHours', 'fiverrHours', 'waterGlasses', 'sleepHours', 'linkedinConnections', 'instagramDms', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'dayNumber', 'dateIso', 'completedHabitIds', 'totalHabitsSnapshot', 'notes', 'studyHours', 'fiverrHours', 'waterGlasses', 'sleepHours', 'linkedinConnections', 'instagramDms', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidDailyLog(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(dayKey) &&
+                         isValidDailyLog(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().dayNumber == existing().dayNumber &&
+                         incoming().dateIso == existing().dateIso &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['completedHabitIds', 'totalHabitsSnapshot', 'notes', 'studyHours', 'fiverrHours', 'waterGlasses', 'sleepHours', 'linkedinConnections', 'instagramDms', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(dayKey);
+      }
+
+      match /reminders/{reminderId} {
+        allow get: if isOwner(userId) && isValidId(reminderId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(reminderId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'title', 'targetText', 'timeLabel', 'hour', 'minute', 'enabled', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'targetText', 'timeLabel', 'hour', 'minute', 'enabled', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidReminder(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(reminderId) &&
+                         isValidReminder(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'targetText', 'timeLabel', 'hour', 'minute', 'enabled', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(reminderId);
+      }
+    }
+  }
+}
